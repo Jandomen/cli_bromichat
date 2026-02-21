@@ -1,0 +1,36 @@
+{
+  "name": "bromichat-cli",
+  "version": "1.0.0",
+  "description": "Terminal Social Environment by Jandosoft",
+  "main": "index.js",
+  "bin": {
+    "bromichat": "./bin/bromichat.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "setup": "npm install && npm link",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "cli",
+    "social",
+    "jandosoft",
+    "terminal"
+  ],
+  "author": "Jandosoft",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "boxen": "^5.1.2",
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.3",
+    "configstore": "^5.0.1",
+    "date-fns": "^3.6.0",
+    "figlet": "^1.7.0",
+    "form-data": "^4.0.5",
+    "inquirer": "^8.2.4",
+    "node-emoji": "^1.11.0",
+    "ora": "^5.4.1",
+    "socket.io-client": "^4.7.5"
+  }
+}
