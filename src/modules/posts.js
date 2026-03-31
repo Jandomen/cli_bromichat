@@ -29,6 +29,7 @@ const listPosts = async (page = 1) => {
 
                 const navigationChoices = [];
                 if (hasMore) navigationChoices.push({ name: chalk.bold.blue(`${emoji.get('fast_forward')} Cargar más posts (Página ${page + 1})`), value: 'load_more' });
+                navigationChoices.push({ name: chalk.yellow(`${emoji.get('mag')} BUSCADOR (FILTRAR MURO)`), value: 'search' });
                 navigationChoices.push({ name: chalk.cyan('Nueva Publicación'), value: 'create' });
                 navigationChoices.push({ name: chalk.red('Regresar al Menú'), value: 'back' });
 
@@ -42,6 +43,7 @@ const listPosts = async (page = 1) => {
                 if (action === 'back') return;
                 if (action === 'load_more') { page++; continue; }
                 if (action === 'create') { await createNewPost(); continue; }
+                if (action === 'search') { await searchPosts(posts); continue; }
 
                 // If a post was selected
                 await interactWithPost(action);
@@ -170,6 +172,33 @@ const createNewPost = async () => {
         spinner.fail('Error al publicar.');
     }
     await waitKey();
+};
+
+const searchPosts = async (posts) => {
+    const { query } = await inquirer.prompt([{ type: 'input', name: 'query', message: 'Palabra clave o Autor a buscar:' }]);
+    if (!query) return;
+
+    const filtered = posts.filter(p => 
+        p.content?.toLowerCase().includes(query.toLowerCase()) || 
+        p.user?.username?.toLowerCase().includes(query.toLowerCase())
+    );
+
+    if (filtered.length === 0) {
+        console.log(chalk.red('\n No se encontró coincidencia en esta página.'));
+        await waitKey();
+        return;
+    }
+
+    const { selected } = await inquirer.prompt([{
+        type: 'list',
+        name: 'selected',
+        message: `Resultados para: "${query}"`,
+        choices: [...filtered.map(p => ({ name: `@${p.user?.username}: ${p.content?.substring(0, 40)}...`, value: p })), { name: 'Regresar', value: 'back' }]
+    }]);
+
+    if (selected !== 'back') {
+        await interactWithPost(selected);
+    }
 };
 
 module.exports = { listPosts, createNewPost };

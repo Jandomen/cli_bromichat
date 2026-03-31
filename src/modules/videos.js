@@ -30,6 +30,7 @@ const listVideos = async () => {
             }));
 
             const navigationChoices = [
+                { name: chalk.yellow(`${emoji.get('mag')} BUSCAR CLIPS`), value: 'search' },
                 { name: chalk.red('Regresar al Menú Principal'), value: 'back' }
             ];
 
@@ -42,6 +43,7 @@ const listVideos = async () => {
             }]);
 
             if (action === 'back') return;
+            if (action === 'search') { await searchVideos(videos); continue; }
 
             // If a video was selected
             await playVideo(action, videos);
@@ -122,6 +124,33 @@ const playVideo = async (video, allVideos) => {
             console.log(chalk.red(`\n Error en la señal: ${err.message}`));
             await waitKey();
         }
+    }
+};
+
+const searchVideos = async (videos) => {
+    const { query } = await inquirer.prompt([{ type: 'input', name: 'query', message: 'Término de búsqueda (Título/Autor):' }]);
+    if (!query) return;
+
+    const filtered = videos.filter(v => 
+        v.title?.toLowerCase().includes(query.toLowerCase()) || 
+        v.user?.username?.toLowerCase().includes(query.toLowerCase())
+    );
+
+    if (filtered.length === 0) {
+        console.log(chalk.red('\n No se encontraron clips que coincidan.'));
+        await waitKey();
+        return;
+    }
+
+    const { selected } = await inquirer.prompt([{
+        type: 'list',
+        name: 'selected',
+        message: `Resultados encontrados (${filtered.length}):`,
+        choices: [...filtered.map(v => ({ name: `[CLIP] ${v.title} (@${v.user?.username})`, value: v })), { name: 'Regresar', value: 'back' }]
+    }]);
+
+    if (selected !== 'back') {
+        await playVideo(selected, videos);
     }
 };
 

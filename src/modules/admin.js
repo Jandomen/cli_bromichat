@@ -39,6 +39,7 @@ const showAdminPanel = async () => {
             choices: [
                 { name: `${emoji.get('mag')} Gestionar Usuarios (Ban/Suspensión/Rango)`, value: 'users' },
                 { name: `${emoji.get('no_entry_sign')} Moderar Contenido (Borrar Posts/Clips)`, value: 'content' },
+                { name: `${emoji.get('microscope')} Auditoría Cuántica de IDs (HEX_DEEP)`, value: 'audit' },
                 { name: `${emoji.get('gear')} Configuración Global (Ads/Mensajes)`, value: 'settings' },
                 new inquirer.Separator(),
                 { name: chalk.yellow(`${emoji.get('back')} Regresar al Modo Usuario (Monitorización)`), value: 'back' }
@@ -50,6 +51,7 @@ const showAdminPanel = async () => {
         switch (action) {
             case 'users': await manageUsers(); break;
             case 'content': await moderateContent(); break;
+            case 'audit': await deepIdAudit(); break;
             case 'settings': await globalSettings(); break;
         }
     }
@@ -84,6 +86,7 @@ const manageUsers = async () => {
                 { name: 'Cambiar Rango (Admin/User)', value: 'role' },
                 { name: 'Suspender Temporalmente', value: 'suspend' },
                 { name: 'Revocar Suspensión', value: 'unsuspend' },
+                { name: `${emoji.get('skull')} BANEO PERMANENTE (CUENTA + IP)`, value: 'ban_ip' },
                 { name: 'ELIMINAR CUENTA (Acción Final)', value: 'delete' },
                 { name: 'Cancelar', value: 'back' }
             ]
@@ -105,6 +108,12 @@ const manageUsers = async () => {
         } else if (userAction === 'unsuspend') {
             await client.post('/admin/user/unsuspend', { userId: targetUser._id });
             console.log(chalk.green(' Acceso restaurado.'));
+        } else if (userAction === 'ban_ip') {
+             const { confirm } = await inquirer.prompt([{ type: 'confirm', name: 'confirm', message: chalk.red('¿BLOQUEAR IP Y CUENTA PERMANENTEMENTE?'), default: false }]);
+             if (confirm) {
+                await client.post('/admin/user/ban', { userId: targetUser._id, reason: 'Baneo por IP via Centro de Comando CLI' });
+                console.log(chalk.red(' Terminal bloqueada. Sujeto fuera de la red.'));
+             }
         } else if (userAction === 'delete') {
             const { confirm } = await inquirer.prompt([{ type: 'confirm', name: 'confirm', message: chalk.red('¿CONFIRMAR ELIMINACIÓN TOTAL?'), default: false }]);
             if (confirm) {
@@ -185,6 +194,48 @@ const globalSettings = async () => {
         await waitKey();
     } catch (err) {
         console.log(chalk.red(' Error al actualizar configuración: ' + err.message));
+        await waitKey();
+    }
+};
+
+const deepIdAudit = async () => {
+    const { id } = await inquirer.prompt([{ type: 'input', name: 'id', message: 'HEX_ID a investigar:' }]);
+    if (!id) return;
+
+    const spinner = ora('Realizando escaneo multiconfiguración...').start();
+    try {
+        const res = await client.get(`/admin/audit/${id}`);
+        const { entityType, data } = res.data;
+        spinner.stop();
+
+        console.log(boxen(
+            `${chalk.bold.yellow('ENTITY_TYPE:')} ${chalk.bold(entityType.toUpperCase())}\n` +
+            `${chalk.bold.cyan('CONTENIDO:')} ${data.content || data.title || data.username || 'N/A'}\n` +
+            `${chalk.bold.magenta('AUTOR/ID:')} ${data.user?.username || data._id}\n` +
+            `${chalk.bold.green('REACCIONES:')} ${data.reactions?.length || 0}\n` +
+            `${chalk.bold.gray('REGISTRO:')} ${new Date(data.createdAt).toLocaleString()}\n\n` +
+            `${chalk.white(JSON.stringify(data, null, 2).substring(0, 500))}...`,
+            { padding: 1, borderColor: 'green', borderStyle: 'round', title: ' RESULTADO DE AUDITORÍA ' }
+        ));
+
+        const { action } = await inquirer.prompt([{
+            type: 'list',
+            name: 'action',
+            message: 'PRESIÓN OPERATIVA:',
+            choices: [
+                { name: 'Eliminar Registro Permanentemente', value: 'delete' },
+                { name: 'Finalizar Auditoría', value: 'back' }
+            ]
+        }]);
+
+        if (action === 'delete') {
+            const endpoint = entityType === 'user' ? `/admin/user/${id}` : `/admin/${entityType}/${id}`;
+            await client.delete(endpoint);
+            console.log(chalk.green(' Registro purgado de la red.'));
+        }
+        await waitKey();
+    } catch (err) {
+        spinner.fail(err.response?.data?.error || 'ID no encontrado.');
         await waitKey();
     }
 };
